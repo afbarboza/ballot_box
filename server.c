@@ -29,30 +29,65 @@ void handle_error(void)
 
 void *init_msg_xcgh(void *socket_descriptor)
 {
-	char rcv_data = 0;
-	int connected = 0, i = 0;
-	connected = (int) socket_descriptor;
+	int client_opcode = 0;
+	int connected_sock = 0;
+	connected_sock = (int) socket_descriptor;
+
+	/* stores the incoming ballot from client */
+	vote_t *buffer_ballot = (vote_t *) malloc(N_CANDIDATES * sizeof(vote_t));
 
 	/* warns about a new connecion thread */
-	printf("new connection id: %d\n", connected);
+	printf("new connection id: %d\n", connected_sock);
 
 	/* keep up the protocol exchange between server and client */
 	while (1) {
+		/* protocol: read the command opcode from client */
+		recv(connected_sock, &client_opcode, sizeof(int), 0);
 
-		/* protocol 1: send the list of candidates */
-		send(connected, candidates, (N_CANDIDATES * sizeof(vote_t)), 0);
-		break;
+		switch (client_opcode) {
+			case LD_CANDIDATES:
+				/* protocol: send the list of candidates */
+				send(connected_sock, server_candidates, (N_CANDIDATES * sizeof(vote_t)), 0);
+				break;
+
+			case HLT_BALLOT:
+				/* protocol: read the votes coming from the client and count it */
+				recv(connected_sock, buffer_ballot, N_CANDIDATES * sizeof(vote_t), 0);
+				count_amount_votes(server_candidates, buffer_ballot);
+				goto end_connection;
+				break;
+			
+			case PANIC: /* handles when client press Ctrl+C */
+
+				/* protocol: read the votes coming from the client and count it */
+				recv(connected_sock, buffer_ballot, N_CANDIDATES * sizeof(vote_t), 0);
+
+				/* alows communication with client exits gracefully */
+				puts("panic : client says goodbye...\n");
+
+				goto end_connection;
+				break;
+
+			default:
+				fprintf(stderr, "bad opcode");
+		};
 	}
 
-	printf("closing down connection id: %d\n", connected);
+
+end_connection:
+	/* shows the partial results of the ellections */
+	rank_server_candidates();
+
+	free(buffer_ballot);
+	printf("closing down connection id: %d\n", connected_sock);
 	pthread_exit(EXIT_SUCCESS);
 	return NULL;
 }
 
 int main(void)
 {
-	char snd_data, rcv_data, flag = 1;
-	int sock, bytes_recv, i;
+	char flag = 1;
+	int sock;
 	struct sockaddr_in client_addr;
 
 	/* load list of all candidates in server */

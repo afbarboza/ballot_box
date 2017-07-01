@@ -32,10 +32,10 @@ void handle_error(const int __line)
 __attribute__((noinline))
 void halt_client(int foo)
 {
-	char snd_data = '0';
+	int cmd_exit = 666;
 
 	if (connected == true) {
-		send(sock, &snd_data, sizeof(snd_data), 0);
+		send(sock, &cmd_exit, sizeof(int), 0);
 		close(sock);
 		fflush(stdout);
 	}
@@ -46,10 +46,11 @@ void halt_client(int foo)
 
 int main(void)
 {
-	char snd_data;
+	int user_vote = 0;
+	int cmd_opcode = 0;
 	int bytes_recv, i;
 	struct hostent *host = NULL;
-	vote_t candidates[N_CANDIDATES];
+	client_candidates = (vote_t *) malloc(N_CANDIDATES * sizeof(vote_t));
 	char *servername = (char *) malloc(MAXLEN * sizeof(char));
 
 	/* allow comunication with server exit gracefully */
@@ -88,17 +89,45 @@ int main(void)
 	while (1) {
 		connected = true;
 
-		/*protocol 1: reads the list of candidates from server */
-		recv(sock, &candidates, N_CANDIDATES * sizeof(vote_t), 0);
-		for (i = 0; i < N_CANDIDATES; i++) {
-			printf("%d - %s\n", candidates[i].n_votes, candidates[i].candidate_party);
-		}
+		/* displays main menu of actions */
+		output_main_menu();
 
-		break;
+read_opcode:
+		/* gets the selected action */		
+		scanf("%d", &cmd_opcode);
+
+		/* sends the command opcode to the server */
+		send(sock, &cmd_opcode, sizeof(int), 0);
+
+		/* delays to ensure server receives the opcode */
+		usleep(3);
+
+		switch(cmd_opcode) {
+			case VOTE:
+				get_user_vote();
+				break;
+			case VOTE_BLANK:
+				inc_vote_candidate(3);
+				break;
+			case VOTE_NULL:
+				inc_vote_candidate(4);
+				break;
+			case LD_CANDIDATES:
+				/*protocol: reads the list of candidates from server */
+				recv(sock, client_candidates, N_CANDIDATES * sizeof(vote_t), 0);
+				break;
+			case HLT_BALLOT:
+				/* protocol: halts the ballot and send the amount of votes */
+				send(sock, client_candidates, N_CANDIDATES * sizeof(vote_t), 0);
+				close(sock);
+				fflush(stdout);
+				free(servername);
+				free(client_candidates);
+				exit(EXIT_SUCCESS);
+				break;
+			default:
+				fprintf(stderr, "bad opcode. try again\n");
+				goto read_opcode;
+		};
 	}
-
-	close(sock);
-	fflush(stdout);
-	free(servername);
-	exit(EXIT_SUCCESS);
 }
