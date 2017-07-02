@@ -1,0 +1,32 @@
+[RFC 1] protocolo de comunicação do lado do servidor.
+
+Definições úteis:
+	estrutura voto {
+		int n_votes: 		4 bytes. 	// número de votos que o candidato obteve
+		int vote_code:		4 bytes. 	// código do partidado ao qual o candidato pertence. (13, 45, 25)
+		string partido:		28 bytes.	// nome do partido do candidato. (PT, PSDB, DEM)
+		string candidato: 	28 bytes	// nome do candidato (Aécio, Lula, Temer)
+	}
+
+	NRO_MAX_CANDIDATOS: 5 (3 partidos + 1 partido nulo + 1 partido branco).
+	buffer1: vetor de 5 elementos do tipo voto, inicializado no servidor.
+	buffer2: vetor de 5 elementos do tipo voto, lido do cliente.
+
+Fim das Definições	
+
+enquanto (verdadeiro) faça {
+		passo 1: {
+			servidor recebe inteiro de 4 bytes contendo o opcode vindo do cliente.
+			se opcode == 999, vá para o passo 2.
+			se opcode == 888, vá para o passo 3.
+		}
+
+		passo 2: { 
+			envia a lista (ou seja, o buffer1) de candidatos para o cliente.
+		}
+
+		passo 3 { 
+			recebe uma lista (ou seja, o buffer2) vindos do cliente
+			 contabiliza_votos(buffer1, buffer2)
+		}
+}
