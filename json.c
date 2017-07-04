@@ -8,6 +8,9 @@
 
 #define	JSON_LEN	1024
 
+#define	raise_invalid_parse()	fprintf(stderr, "error: invalid parse at %s:%d\n", __FILE__, __LINE__); \
+				exit(EXIT_FAILURE)
+
 char *stringify_json(const char *json_filename)
 {
 	int fsize = 0;
@@ -55,5 +58,35 @@ char *build_json(vote_t *src)
 
 vote_t parse_json(const char *json_str)
 {
-	/* TODO: code here */
+	vote_t retval;
+
+	if (json_str == NULL) {
+		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	/* retrieves the pair field:value from json string */
+	cJSON *root = cJSON_Parse(json_str);
+	cJSON *json_code 	= cJSON_GetObjectItemCaseSensitive(root, "code");
+	cJSON *json_candidate	= cJSON_GetObjectItemCaseSensitive(root, "name");
+	cJSON *json_party	= cJSON_GetObjectItemCaseSensitive(root, "party");
+	cJSON *json_num_votes	= cJSON_GetObjectItemCaseSensitive(root, "num_votes");
+
+	/* check sanity of integer values */
+	if (!cJSON_IsNumber(json_code) || !cJSON_IsNumber(json_num_votes)) {
+		raise_invalid_parse();
+	}
+
+	/* check sanity of string values */
+	if (!cJSON_IsString(json_candidate) || !cJSON_IsString(json_party)) {
+		raise_invalid_parse();
+	}
+
+	/* fill the struct vote */
+	retval.n_votes 		= (int) json_num_votes->valuedouble;
+	retval.vote_code 	= (int) json_code->valuedouble;
+	strcpy(retval.candidate_party, json_party->valuestring);
+	strcpy(retval.candidate_name, json_candidate->valuestring);
+
+	return retval;
 }
