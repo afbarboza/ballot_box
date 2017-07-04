@@ -14,7 +14,7 @@ struct vote {
 	int	vote_code;
 	char	candidate_party[MAX_STRLEN];
 	char	candidate_name[MAX_STRLEN];
-} __attribute__((aligned(32)));
+} __attribute__((aligned(64)));
 
 
 enum opcode {
