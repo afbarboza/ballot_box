@@ -30,17 +30,50 @@ int main(void)
 		.candidate_name = "Aecio"
 	};
 
-	char *json_vote = build_json(&v);
-	char *json_vote2 = build_json(&v2);
+	vote_t v3 = {
+		.n_votes = 10,
+		.vote_code = 50,
+		.candidate_party = "PSOL",
+		.candidate_name = "Luciana"
+	};
 
-	printf("%s\n%s\n", json_vote, json_vote2);
+
+	vote_t v4 = {
+		.n_votes = 11,
+		.vote_code = 25,
+		.candidate_party = "PMDB",
+		.candidate_name = "Temer"
+	};
+
+	char *json_votes[4];
+
+	json_votes[0] = build_json(&v);
+	json_votes[1] = build_json(&v2);
+	json_votes[2] = build_json(&v3);
+	json_votes[3] = build_json(&v4);
+
+	printf("%s\n%s\n%s\n%s\n", json_votes[0], json_votes[1], json_votes[2], json_votes[3]);
 
 
-	vote_t v3 = parse_json(json_vote);
-	vote_t v4 = parse_json(json_vote2);
+	vote_t v5 = parse_json(json_votes[0]);
+	vote_t v6 = parse_json(json_votes[1]);
 
-	puts_vote(&v3);
-	puts_vote(&v4);
+
+	puts_vote(&v5);
+	puts_vote(&v6);
+
+	write_json_file("test.json", json_votes, 4);
+
+	char *txt_json = stringify_json("test.json");
+	printf("\n\n\njson txt: \n\n\n%s\n\n", txt_json);
+
+	int i;
+	int size_list = 0;
+	char **json_tokens = extract_json_list(txt_json, &size_list);
+	
+	for (i = 0; i < size_list; i++) {
+		printf("%s\n", json_tokens[i]);
+	}
 
 	return 0;
 }

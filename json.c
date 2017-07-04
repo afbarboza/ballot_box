@@ -90,3 +90,67 @@ vote_t parse_json(const char *json_str)
 
 	return retval;
 }
+
+void write_json_file(const char *filename, char **json_strings, int n_strings)
+{
+	int i;
+	FILE *json_fd = NULL;
+
+	/* creates the json file storing array of objects */
+	json_fd = fopen(filename, "w+");
+
+	/* walks a lis of json strings and write to the disk */
+	for (i = 0; i < n_strings; i++) {
+		if (i == 0) {
+			/* if SEEK_SET, then adds the '[' */
+			fprintf(json_fd, "[%s,", json_strings[i]);
+		} else if (i == (n_strings - 1)) {
+			/* if SEEK_END, then adds the ']' */
+			fprintf(json_fd, "%s]", json_strings[i]);
+		} else {
+			/* otherwise, adds the ',' character */
+			fprintf(json_fd, "%s,", json_strings[i]);
+		}
+	}
+
+	fclose(json_fd);
+}
+
+char **extract_json_list(const char *jsonstr, int *length)
+{
+	int i = 0;
+	int json_len = 0;
+	int list_len = 0;
+	char *tmp = NULL;
+	char *token = NULL;
+	char **json_list = NULL;
+
+	if (jsonstr == NULL) {
+		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	/* creates a copy of @jsonstr, once it will be altered inside this function */
+	json_len = strlen(jsonstr);
+	tmp = (char *) malloc(json_len * sizeof(char));
+	strcpy(tmp, jsonstr);
+
+	/* alloc memory for the list */
+	json_list = (char **) realloc(json_list, (list_len + 1) * sizeof(char *));
+
+	/* breaking the @jsonstr into a sequence of json strings */
+	token = strtok(tmp, ",[]");
+	while (token != NULL) {
+		json_list[list_len] = token;
+		#ifdef	DEBUG
+		printf("__%s__", json_list[list_len]);
+		#endif
+		token = strtok(NULL, ",[]");
+		list_len++;
+		json_list = (char **) realloc(json_list, (list_len + 1) * sizeof(char *));
+	}
+
+	*length = list_len;
+	free(tmp);
+	return json_list;
+}
