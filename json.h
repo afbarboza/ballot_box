@@ -42,6 +42,20 @@ vote_t parse_json(const char *json_str);
  */
 void write_json_file(const char *filename, char **json_strings, int n_strings);
 
+/**
+ * extract_json_list: 	receives a single string, representing an array 
+ *			of json objects and converts into an array of
+ *			strings, where each string represents a single
+ *			object in json format.
+ *
+ * @jsonstr:	the string storing the array of json objects.
+ *
+ * @length:	the length of the list returned by this function.
+ *		(it muts be initialized before this function is called)
+ *
+ * @return:	an array of strings, where each string represents a
+ *		single json object.
+ */
 char **extract_json_list(const char *jsonstr, int *length);
 
 #endif	/* json.h */

@@ -13,6 +13,7 @@
 
 char *stringify_json(const char *json_filename)
 {
+	char tmp;
 	int fsize = 0;
 	FILE *fd = NULL;
 	char *buffer = NULL;
@@ -33,8 +34,11 @@ char *stringify_json(const char *json_filename)
 	/* reads the file from disk */
 	while (!feof(fd)) {
 		buffer = (char *) realloc(buffer, ((fsize + 1) * sizeof(char)));
-		fscanf(fd, "%c", &(buffer[fsize]));
-		fsize++;
+		fscanf(fd, "%c", &tmp);
+		if (tmp != '\n' || tmp != EOF) {
+			buffer[fsize] = tmp;
+			fsize++;
+		}
 	}
 
 	return buffer;
@@ -106,7 +110,7 @@ void write_json_file(const char *filename, char **json_strings, int n_strings)
 			fprintf(json_fd, "[%s,", json_strings[i]);
 		} else if (i == (n_strings - 1)) {
 			/* if SEEK_END, then adds the ']' */
-			fprintf(json_fd, "%s]", json_strings[i]);
+			fprintf(json_fd, "%s]\n", json_strings[i]);
 		} else {
 			/* otherwise, adds the ',' character */
 			fprintf(json_fd, "%s,", json_strings[i]);
@@ -116,12 +120,34 @@ void write_json_file(const char *filename, char **json_strings, int n_strings)
 	fclose(json_fd);
 }
 
+static char *add_json_brackets(const char *jsonstr)
+{
+	int tmplen = 0;
+	char *retval = NULL;
+	if (jsonstr == NULL) {
+		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	if (!strcmp(jsonstr, ",")) {
+		return NULL;
+	}
+
+	tmplen = strlen(jsonstr) + 3;
+	retval = (char *) malloc(tmplen * sizeof(char));
+	strcat(retval, "{");
+	strcat(retval, jsonstr);
+	strcat(retval, "}");
+	return retval;
+}
+
 char **extract_json_list(const char *jsonstr, int *length)
 {
 	int i = 0;
 	int json_len = 0;
 	int list_len = 0;
 	char *tmp = NULL;
+	char *elem = NULL;
 	char *token = NULL;
 	char **json_list = NULL;
 
@@ -139,18 +165,25 @@ char **extract_json_list(const char *jsonstr, int *length)
 	json_list = (char **) realloc(json_list, (list_len + 1) * sizeof(char *));
 
 	/* breaking the @jsonstr into a sequence of json strings */
-	token = strtok(tmp, ",[]");
+	token = strtok(tmp, "[]{}\n");
 	while (token != NULL) {
-		json_list[list_len] = token;
-		#ifdef	DEBUG
-		printf("__%s__", json_list[list_len]);
-		#endif
-		token = strtok(NULL, ",[]");
-		list_len++;
-		json_list = (char **) realloc(json_list, (list_len + 1) * sizeof(char *));
+		elem = add_json_brackets(token);
+		if (elem != NULL) {
+			json_list[list_len] = add_json_brackets(token);
+			#ifdef	DEBUG
+			printf("%s\n***\n", json_list[list_len]);
+			#endif
+			list_len++;
+			json_list = (char **) realloc(json_list, (list_len + 1) * sizeof(char *));
+		}
+		token = strtok(NULL, "[]{}\n");
 	}
-
+	
 	*length = list_len;
+	#ifdef DEBUG
+		printf("\n");
+		printf("list_len: %d\n", *length);
+	#endif
 	free(tmp);
 	return json_list;
 }

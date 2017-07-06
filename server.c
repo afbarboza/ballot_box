@@ -27,6 +27,49 @@ void handle_error(void)
 	exit(EXIT_FAILURE);
 }
 
+
+//str MUST BE in json format
+void send_vote_files(int socket, char *str_file)
+{
+	int i;
+	char c;
+	int len = 0;
+
+	if (str_file == NULL) {
+		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	len = strlen(str_file);
+	for (i = 0; i < len; i++) {
+		send(socket, &(str_file[i]), sizeof(char), 0);
+	}
+}
+
+char *recv_vote_files(int socket)
+{
+	char c;
+	int i = 0;
+	char *buffer = NULL;
+
+	/* consumes the received string from java client */
+	while (1) {
+		recv(socket, &c, sizeof(char), 0);
+		buffer = (char *) realloc(buffer, (i + 1) * sizeof(char));
+		buffer[i] = c;
+		i++;
+		if (c == '\n' || c == '\0') {
+			break;
+		}
+	}
+
+	/* just some C bullshit */
+	buffer = (char *) realloc(buffer, (i + 1) * sizeof(char));
+	buffer[i] = '\0';
+
+	return buffer;
+}
+
 void *init_msg_xcgh(void *socket_descriptor)
 {
 	int client_opcode = 0;

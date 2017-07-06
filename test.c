@@ -58,10 +58,6 @@ int main(void)
 	vote_t v5 = parse_json(json_votes[0]);
 	vote_t v6 = parse_json(json_votes[1]);
 
-
-	puts_vote(&v5);
-	puts_vote(&v6);
-
 	write_json_file("test.json", json_votes, 4);
 
 	char *txt_json = stringify_json("test.json");
@@ -70,10 +66,13 @@ int main(void)
 	int i;
 	int size_list = 0;
 	char **json_tokens = extract_json_list(txt_json, &size_list);
-	
+
+	#ifndef DEBUG
+	puts("json tokens: \n");
 	for (i = 0; i < size_list; i++) {
 		printf("%s\n", json_tokens[i]);
 	}
+	#endif
 
 	return 0;
 }
