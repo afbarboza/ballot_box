@@ -98,11 +98,10 @@ char *recv_vote_files(int socket)
 
 void puts_vote(vote_t *v)
 {
-	printf("n_vote: %d\n", v->n_votes);
-	printf("vote_code: %d\n", v->vote_code);
-	printf("name: %s\n", v->candidate_name);
-	printf("party: %s\n", v->candidate_party);
-	puts("\n---*---\n");
+	printf("n_vote: %d --- ", v->n_votes);
+	printf("vote_code: %d --- ", v->vote_code);
+	printf("name: %s --- ", v->candidate_name);
+	printf("party: %s \n\n", v->candidate_party);
 }
 
 /**
@@ -127,9 +126,6 @@ int read_opcode(int socket)
 
 	/* converts it to an integer */
 	op = atoi(tmpstr);
-	#ifdef	DEBUG
-		printf("recv opcode: %s-%d\n", tmpstr, op);
-	#endif
 	free(tmpstr);
 	return op;
 }
@@ -151,15 +147,16 @@ vote_t *parse_incoming_votes(char *str_client_votes)
 		exit(EXIT_FAILURE);
 	}
 
-	#ifdef	DEBUG
-		printf("%s: must convert %s\n", __func__, str_client_votes);
-	#endif
-
 	/* tokenize the json file of votes incoming from client */
 	char **incoming_votes = extract_json_list(str_client_votes, &len);
 
 	/* temporary buffer of files used to compute the partial results of elections */
 	buffer = (vote_t *) malloc(len * sizeof(vote_t));
+
+
+	#ifdef	DEBUG
+		printf("%s:%s - %d parsed votes: \n", __FILE__, __func__, len);
+	#endif
 
 	/* converts the list of tokens into a buffer ov votes vote_t */
 	for (i = 0; i < len; i++) {
@@ -254,7 +251,7 @@ void init_candidates_file(void)
 
 		/* gets more room to the file to be sent */
 		tmplen += strlen(tmp_file_candidate);
-		file_server_candidates = (char *) realloc(file_server_candidates, (tmplen + 4) * sizeof(char));
+		file_server_candidates = (char *) realloc(file_server_candidates, (tmplen + 6) * sizeof(char));
 
 		if (tmp_file_candidate == NULL) {
 			fprintf(stderr, "error: null pointer at %s:%s:%d\n", __FILE__, __func__, __LINE__);
@@ -264,29 +261,15 @@ void init_candidates_file(void)
 		if (i == 0) {
 			strncat(file_server_candidates, "[", 1);
 			strcat(file_server_candidates, tmp_file_candidate);
-			strncat(file_server_candidates, ", ", 1);
+			strncat(file_server_candidates, ",", 1);
 		} else if (i == (N_CANDIDATES - 1)) {
 			strcat(file_server_candidates, tmp_file_candidate);
-			strncat(file_server_candidates, "]\n", 2);
+			strncat(file_server_candidates, "]\n\0", 3);
 		} else {
 			strcat(file_server_candidates, tmp_file_candidate);
-			strncat(file_server_candidates, ", ", 2);
+			strncat(file_server_candidates, ",", 1);
 		}
-
-		#ifdef	DEBUG
-			printf("adding: [%s]\n", tmp_file_candidate);
-			printf(">>%s<<\n", file_server_candidates);
-		#endif
-
-		#ifdef DEBUG
-			puts_vote(&server_candidates[i]);
-		#endif
 	}
-
-	#ifdef	DEBUG
-		printf("json file: \n%s\n", file_server_candidates);
-		getchar();
-	#endif
 }
 
 int main(void)

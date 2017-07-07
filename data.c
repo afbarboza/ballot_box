@@ -64,6 +64,7 @@ void count_amount_votes(vote_t *server_candidates, vote_t *client_votes)
 
 	for (i = 0; i < N_CANDIDATES; i++) {
 		pthread_mutex_lock(&lock_candidate);
+
 		server_candidates[i].n_votes += client_votes[i].n_votes;
 		pthread_mutex_unlock(&lock_candidate);
 	}
@@ -171,5 +172,3 @@ read_vote:
 	/* increments the number of votes to the candidate */
 	inc_vote_candidate(idx);
 }
-
-
