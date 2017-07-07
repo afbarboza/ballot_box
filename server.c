@@ -183,12 +183,21 @@ vote_t *parse_incoming_votes(char *str_client_votes)
 __attribute__((noinline))
 void *halt_client_connection(int sock, vote_t *buffer_ballot)
 {
+	int i;
+	char **candidates_array_json = NULL;
+
 	/* shows the partial results of the ellections */
 	rank_server_candidates();
 
 	/* free the used buffer of votes */
 	if (buffer_ballot != NULL)
 		free(buffer_ballot);
+
+	for (i = 0; i < N_CANDIDATES; i++) {
+		candidates_array_json = (char **) realloc(candidates_array_json, (i + 1) * sizeof(char *));
+		candidates_array_json[i] = build_json(&(server_candidates[i]));	
+	}
+	write_json_file("./VotingSystem/votes.json", candidates_array_json, N_CANDIDATES);
 
 	/* log-keeping warning the end of connection*/
 	printf("closing down connection id: %d\n", sock);
