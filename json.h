@@ -26,7 +26,7 @@ char *build_json(vote_t *src);
  *
  * @json_str: the string to be converted to a vote_t datatype
  */
-vote_t parse_json(const char *json_str);
+vote_t parse_json(char *json_str);
 
 /**
  * write_json_file - writes to the disk a set of json strings

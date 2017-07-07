@@ -151,6 +151,10 @@ vote_t *parse_incoming_votes(char *str_client_votes)
 		exit(EXIT_FAILURE);
 	}
 
+	#ifdef	DEBUG
+		printf("%s: must convert %s\n", __func__, str_client_votes);
+	#endif
+
 	/* tokenize the json file of votes incoming from client */
 	char **incoming_votes = extract_json_list(str_client_votes, &len);
 

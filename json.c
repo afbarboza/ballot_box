@@ -70,7 +70,7 @@ char *build_json(vote_t *src)
 	return json_vote;
 }
 
-vote_t parse_json(const char *json_str)
+vote_t parse_json(char *json_str)
 {
 	vote_t retval;
 
@@ -78,6 +78,10 @@ vote_t parse_json(const char *json_str)
 		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
 		exit(EXIT_FAILURE);
 	}
+
+	#ifdef DEBUG
+		printf("%s received json-string: \n%s\n", __func__, json_str);
+	#endif
 
 	/* retrieves the pair field:value from json string */
 	cJSON *root = cJSON_Parse(json_str);
@@ -178,7 +182,7 @@ char **extract_json_list(const char *jsonstr, int *length)
 	token = strtok(tmp, "[]{}\n");
 	while (token != NULL) {
 		elem = add_json_brackets(token);
-		if (elem != NULL) {
+		if (elem != NULL && !strcmp(elem, "}")) {
 			json_list[list_len] = add_json_brackets(token);
 			#ifdef	DEBUG
 			printf("%s\n***\n", json_list[list_len]);
