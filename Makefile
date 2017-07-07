@@ -1,5 +1,9 @@
 all:
-	gcc server.c data.c -o server -Wall -lpthread
+	gcc data.c cJSON.c json.c server.c -o server -Wall -lpthread -g
+	gcc client.c data.c -o client -Wall -g
+
+debug:
+	gcc data.c cJSON.c json.c server.c -o server -Wall -lpthread -DDEBUG -g
 	gcc client.c data.c -o client -Wall
 
 clear:

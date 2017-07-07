@@ -31,6 +31,8 @@ typedef struct vote vote_t;
 vote_t	server_candidates[N_CANDIDATES];
 vote_t  *client_candidates;
 
+char *file_server_candidates;
+
 extern pthread_mutex_t	lock_candidate;
 
 SERVER_CODE
@@ -48,8 +50,6 @@ void rank_server_candidates(void);
  */
 CLIENT_CODE
 int check_sanity_vote(int code);
-
-
 
 /**
  * output_main_menu -  	shows the main options to the client:

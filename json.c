@@ -6,7 +6,7 @@
 
 #include "cJSON.h"
 
-#define	JSON_LEN	1024
+#define	JSON_LEN	256
 
 #define	raise_invalid_parse()	fprintf(stderr, "error: invalid parse at %s:%d\n", __FILE__, __LINE__); \
 				exit(EXIT_FAILURE)
@@ -41,6 +41,11 @@ char *stringify_json(const char *json_filename)
 		}
 	}
 
+	/* just some C bullshit to handle strings */
+	fsize++;
+	buffer = (char *) realloc(buffer, ((fsize + 1) * sizeof(char)));
+	buffer[fsize - 1] = '\0';
+
 	return buffer;
 }
 
@@ -54,6 +59,11 @@ char *build_json(vote_t *src)
 	}
 
 	json_vote = (char *) malloc(JSON_LEN * sizeof(char));
+
+	if (json_vote == NULL) {
+		fprintf(stderr, "error: not enough memory. %s:%d\n", __func__, __LINE__);
+	}
+
 	sprintf	(json_vote, 
 		"{\"code\": %d, \"name\": \"%s\", \"party\": \"%s\", \"num_votes\":%d}",
 		src->vote_code, src->candidate_name, src->candidate_party, src->n_votes);
@@ -110,7 +120,7 @@ void write_json_file(const char *filename, char **json_strings, int n_strings)
 			fprintf(json_fd, "[%s,", json_strings[i]);
 		} else if (i == (n_strings - 1)) {
 			/* if SEEK_END, then adds the ']' */
-			fprintf(json_fd, "%s]\n", json_strings[i]);
+			fprintf(json_fd, "%s]\n\0", json_strings[i]);
 		} else {
 			/* otherwise, adds the ',' character */
 			fprintf(json_fd, "%s,", json_strings[i]);
@@ -133,11 +143,11 @@ static char *add_json_brackets(const char *jsonstr)
 		return NULL;
 	}
 
-	tmplen = strlen(jsonstr) + 3;
+	tmplen = strlen(jsonstr) + 4;
 	retval = (char *) malloc(tmplen * sizeof(char));
 	strcat(retval, "{");
 	strcat(retval, jsonstr);
-	strcat(retval, "}");
+	strcat(retval, "}\0");
 	return retval;
 }
 

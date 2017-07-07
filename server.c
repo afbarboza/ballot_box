@@ -13,11 +13,16 @@
 #include <arpa/inet.h>
 
 #include "data.h"
+#include "json.h"
 
 #define MAXLEN			0xFF
 #define	MAX_PENDING_CONNECTIONS	10
 #define	SERVER_PORT		40011
 
+/**
+ * handle_error - 	handles unhandable errors in the TCP protocol
+ *			and halts the program
+ */
 __attribute__((noinline, noreturn))
 void handle_error(void)
 {
@@ -27,8 +32,17 @@ void handle_error(void)
 	exit(EXIT_FAILURE);
 }
 
-
-//str MUST BE in json format
+/**
+ *
+ * send_vote_files - 	send the json files of votes to the client.
+ *
+ *
+ * @socket: 	the opened socket, used for comunication to the client.
+ *		(must be initialized and opened before this function be called)
+ *
+ * @str_file:	pointer to the file to be sent to the client.
+ *
+ */
 void send_vote_files(int socket, char *str_file)
 {
 	int i;
@@ -46,6 +60,18 @@ void send_vote_files(int socket, char *str_file)
 	}
 }
 
+/**
+ * recv_vote_files - 	receives a json file of votes, incoming from the client.
+ *
+ *
+ * @socket:	the opened socket, used for comunication to the client.
+ *		(must be initialized and opened before this function be called)
+ *
+ *
+ * @return:	the string containing the contents of json file.
+ *		(this string is null-terminated)
+ *
+ */
 char *recv_vote_files(int socket)
 {
 	char c;
@@ -70,14 +96,113 @@ char *recv_vote_files(int socket)
 	return buffer;
 }
 
-void *init_msg_xcgh(void *socket_descriptor)
+void puts_vote(vote_t *v)
+{
+	printf("n_vote: %d\n", v->n_votes);
+	printf("vote_code: %d\n", v->vote_code);
+	printf("name: %s\n", v->candidate_name);
+	printf("party: %s\n", v->candidate_party);
+	puts("\n---*---\n");
+}
+
+/**
+ * read_opcode - reads and returns an opcode incoming from client.
+ *
+ * @socket:	socket used to receive the opcode
+ */
+int read_opcode(int socket)
+{
+	char c;
+	int i = 0, op;
+	char *tmpstr = NULL;
+
+	/* bufferize the string storing the opcode */
+	do {
+		tmpstr = (char *) realloc(tmpstr, (i + 1) * sizeof(char));
+		recv(socket, &c, sizeof(char), 0);
+		tmpstr[i] = c;
+		i++;
+	} while (c != '\n');
+	tmpstr[i - 1] = '\0';
+
+	/* converts it to an integer */
+	op = atoi(tmpstr);
+	#ifdef	DEBUG
+		printf("recv opcode: %s-%d\n", tmpstr, op);
+	#endif
+	free(tmpstr);
+	return op;
+}
+
+/**
+ * parse_incoming_votes - reads a json-string of votes and 
+ *			conerts into a vote_t buffer.
+ *
+ * @str_client_votes: the json-string of votes
+ *
+ * @return: the buffer of votes computed by the client
+ */
+vote_t *parse_incoming_votes(char *str_client_votes)
+{
+	int len = 0, i;
+	vote_t *buffer;
+	if (str_client_votes == NULL) {
+		fprintf(stderr, "error: null pointer at %s:%d\n", __FILE__, __LINE__);
+		exit(EXIT_FAILURE);
+	}
+
+	/* tokenize the json file of votes incoming from client */
+	char **incoming_votes = extract_json_list(str_client_votes, &len);
+
+	/* temporary buffer of files used to compute the partial results of elections */
+	buffer = (vote_t *) malloc(len * sizeof(vote_t));
+
+	/* converts the list of tokens into a buffer ov votes vote_t */
+	for (i = 0; i < len; i++) {
+		buffer[i] = parse_json(incoming_votes[i]);
+		#ifdef	DEBUG
+			puts_vote(&buffer[i]);
+		#endif
+	}
+
+	return buffer;
+}
+
+/**
+ * halt_client_connection - ends a client connection
+ *
+ * @sock: the socket descriptor of client connection
+ * @buffer_ballot: the buffer of votes readed from client
+ *
+ *
+ */
+__attribute__((noinline))
+void *halt_client_connection(int sock, vote_t *buffer_ballot)
+{
+	/* shows the partial results of the ellections */
+	rank_server_candidates();
+
+	/* free the used buffer of votes */
+	if (buffer_ballot != NULL)
+		free(buffer_ballot);
+
+	/* log-keeping warning the end of connection*/
+	printf("closing down connection id: %d\n", sock);
+
+	/* kill the thread of connection between server and client */
+	pthread_exit(EXIT_SUCCESS);
+	return NULL;
+}
+
+void *init_msg_xchg(void *socket_descriptor)
 {
 	int client_opcode = 0;
 	int connected_sock = 0;
 	connected_sock = (int) socket_descriptor;
+	char *str_incoming_votes = NULL;
 
 	/* stores the incoming ballot from client */
-	vote_t *buffer_ballot = (vote_t *) malloc(N_CANDIDATES * sizeof(vote_t));
+	vote_t *buffer_ballot = NULL;
 
 	/* warns about a new connecion thread */
 	printf("new connection id: %d\n", connected_sock);
@@ -85,56 +210,93 @@ void *init_msg_xcgh(void *socket_descriptor)
 	/* keep up the protocol exchange between server and client */
 	while (1) {
 		/* protocol: read the command opcode from client */
-		recv(connected_sock, &client_opcode, sizeof(int), 0);
+		client_opcode = read_opcode(connected_sock);
 
 		switch (client_opcode) {
 			case LD_CANDIDATES:
 				/* protocol: send the list of candidates */
-				send(connected_sock, server_candidates, (N_CANDIDATES * sizeof(vote_t)), 0);
+				send_vote_files(connected_sock, file_server_candidates);
 				break;
 
 			case HLT_BALLOT:
-				/* protocol: read the votes coming from the client and count it */
-				recv(connected_sock, buffer_ballot, N_CANDIDATES * sizeof(vote_t), 0);
+				/* protocol: read the votes coming from the client, count it and halt connection */
+				str_incoming_votes = recv_vote_files(connected_sock);
+				buffer_ballot = parse_incoming_votes(str_incoming_votes);
 				count_amount_votes(server_candidates, buffer_ballot);
-				goto end_connection;
-				break;
-			
-			case PANIC: /* handles when client press Ctrl+C */
-
-				/* protocol: read the votes coming from the client and count it */
-				recv(connected_sock, buffer_ballot, N_CANDIDATES * sizeof(vote_t), 0);
-
-				/* alows communication with client exits gracefully */
-				puts("panic : client says goodbye...\n");
-
-				goto end_connection;
-				break;
-
+				free(str_incoming_votes);
+				return halt_client_connection(connected_sock, buffer_ballot);
 			default:
-				fprintf(stderr, "bad opcode");
+				/* protocol: we cannot handle bad opcoded */
+				fprintf(stderr, "panc: bad opcode");
+				return halt_client_connection(connected_sock, buffer_ballot);
 		};
 	}
+}
 
+/**
+ * init_candidates_file - intialize the file(i.e. string ) of candidates 
+ *			sent to the client
+ *
+ */
+void init_candidates_file(void)
+{
+	int tmplen = 0, i;
+	char *tmp_file_candidate = NULL;
+	file_server_candidates = NULL;
 
-end_connection:
-	/* shows the partial results of the ellections */
-	rank_server_candidates();
+	for (i = 0; i < N_CANDIDATES; i++) {
+		/* parse each struct vote_t to a json string */
+		tmp_file_candidate = build_json(&server_candidates[i]);
 
-	free(buffer_ballot);
-	printf("closing down connection id: %d\n", connected_sock);
-	pthread_exit(EXIT_SUCCESS);
-	return NULL;
+		/* gets more room to the file to be sent */
+		tmplen += strlen(tmp_file_candidate);
+		file_server_candidates = (char *) realloc(file_server_candidates, (tmplen + 4) * sizeof(char));
+
+		if (tmp_file_candidate == NULL) {
+			fprintf(stderr, "error: null pointer at %s:%s:%d\n", __FILE__, __func__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+
+		if (i == 0) {
+			strncat(file_server_candidates, "[", 1);
+			strcat(file_server_candidates, tmp_file_candidate);
+			strncat(file_server_candidates, ", ", 1);
+		} else if (i == (N_CANDIDATES - 1)) {
+			strcat(file_server_candidates, tmp_file_candidate);
+			strncat(file_server_candidates, "]\n", 2);
+		} else {
+			strcat(file_server_candidates, tmp_file_candidate);
+			strncat(file_server_candidates, ", ", 2);
+		}
+
+		#ifdef	DEBUG
+			printf("adding: [%s]\n", tmp_file_candidate);
+			printf(">>%s<<\n", file_server_candidates);
+		#endif
+
+		#ifdef DEBUG
+			puts_vote(&server_candidates[i]);
+		#endif
+	}
+
+	#ifdef	DEBUG
+		printf("json file: \n%s\n", file_server_candidates);
+		getchar();
+	#endif
 }
 
 int main(void)
 {
 	char flag = 1;
-	int sock;
+	int sock, i = 0;
 	struct sockaddr_in client_addr;
+
 
 	/* load list of all candidates in server */
 	load_candidates();
+
+	/* intializes the buffer file of candidates at server side */
+	init_candidates_file();
 
 	/* handles a invalid try to write to a unconnected socket */
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -180,7 +342,7 @@ int main(void)
 
 		/* creates a new thread to handle the new connection */
 		pthread_t *server_thread = (pthread_t *) malloc(sizeof(pthread_t));
-		pthread_create(server_thread, NULL, init_msg_xcgh, (void *) connected);
+		pthread_create(server_thread, NULL, init_msg_xchg, (void *) connected);
 
 		fflush(stdout);
 	}
