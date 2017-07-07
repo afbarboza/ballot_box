@@ -9,8 +9,6 @@ pthread_mutex_t lock_candidate;
 SERVER_CODE
 void load_candidates(void)
 {
-	/* TODO: change the body of this function */
-
 	int i, j;
 
 	/* initialize the mutex of votes at server side */

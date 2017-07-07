@@ -17,7 +17,7 @@
 
 #define MAXLEN			0xFF
 #define	MAX_PENDING_CONNECTIONS	10
-#define	SERVER_PORT		40011
+#define	SERVER_PORT		40012
 
 /**
  * handle_error - 	handles unhandable errors in the TCP protocol
@@ -96,6 +96,9 @@ char *recv_vote_files(int socket)
 	return buffer;
 }
 
+/**
+ * puts_vote - print out a vote
+ */
 void puts_vote(vote_t *v)
 {
 	printf("n_vote: %d --- ", v->n_votes);
@@ -195,6 +198,11 @@ void *halt_client_connection(int sock, vote_t *buffer_ballot)
 	return NULL;
 }
 
+/**
+ * init_msg_xchg - initializes and maintains the message exchange
+ *		server and client. This is the body of the main
+ *		pthread function.
+ */
 void *init_msg_xchg(void *socket_descriptor)
 {
 	int client_opcode = 0;
